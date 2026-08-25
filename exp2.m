@@ -1,0 +1,36 @@
+clear;
+n1=-3:4;
+n2=1:5;
+y1=[1,2,0,4,-5,6,3,-2];
+y2=[4,-5,-2,7,0];
+n3=min(min(n1),min(n2)):max(max(n1),max(n2));
+s1=zeros(1,length(n3));
+s2=s1;
+s1(n3>=min(n1)& n3<=max(n1))=y1;
+s2(n3>=min(n2)& n3<=max(n2))=y2;
+y3=s1+s2;
+y4=s1-s2;
+y5=s1.*s2;
+subplot(3,3,1);
+stem(n1,y1);
+xlabel("time");
+ylabel("amplitude");
+title("y1");
+subplot(3,3,2);
+stem(n2,y2);
+subplot(3,3,3);
+stem(n3,s1);
+subplot(3,3,4);
+stem(n3,s2);
+subplot(3,3,5);
+stem(n3,y3);
+subplot(3,3,6);
+stem(n3,y4);
+subplot(3,3,7);
+stem(n3,y5);
+
+%convolution 
+y6=conv(y1,y2);
+n4=(min(n1)+min(n2):1:max(n1)+max(n2));
+subplot(3,3,8);
+stem(n4,y6);

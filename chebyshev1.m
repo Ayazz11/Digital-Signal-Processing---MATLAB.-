@@ -1,0 +1,14 @@
+clear;
+fp=input("Enter pass band cutt off");
+fs=input("Enter stop band cutt off");
+wp=2.*pi.*fp;
+ws=2.*pi.*fs;
+ap=input("Enter pass band attenuation in db");
+as=input("Enter stop band attenuation in db");
+[n,wn]=cheb1ord(wp,ws,ap,as,'s');
+[b,a]=cheby1(n,ap,wn,'s');
+omega=0:200*pi:12000*pi;
+h=freqs(b,a,omega);
+gain=20*log10(abs(h));
+figure;
+plot(omega,gain);

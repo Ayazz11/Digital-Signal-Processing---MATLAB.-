@@ -1,0 +1,16 @@
+clear;
+K=input("Enter the number of DFT points");
+k=0:1:K-1;
+v=zeros(1,length(k));
+v(1:end)=k/K;
+N=input("Enter the length of input sequence");
+n=0:N-1;
+Y=ifft(v,N);
+subplot(2,2,1);
+stem(k,v);
+subplot(2,2,2);
+stem(n,real(Y));
+subplot(2,2,3);
+stem(n,imag(Y));
+subplot(2,2,4);
+stem(n,abs(Y));
