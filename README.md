@@ -1,8 +1,8 @@
 # Discrete-Time Signal Processing from Scratch (MATLAB)
 
-Design-level implementation of core DSP building blocks **without** calling `conv`, `cconv`, `fft` or `filter`. Built-in functions are used only as reference oracles in the tests.
+Design-level implementation of core DSP building blocks **without** calling `conv`, `cconv`, `fft` or `filter`. Built-in functions are used only as reference in the tests.
 
-**Status:** Phase 1 (sequences, linear and circular convolution) is done. Phase 2 (DFT/FFT, DTFT, windowed sinc and filter design) is next.
+**Status:** Module 1 (sequences, linear and circular convolution) is done. Module 2 (DFT/FFT, DTFT, windowed sinc and filter design) is next.
 
 ## Files
 
@@ -14,7 +14,7 @@ Design-level implementation of core DSP building blocks **without** calling `con
 | `circular_convolution.m` | N-point circular convolution, with index tracking |
 | `test.m` | Compares both against `conv` / `cconv` and shows linear conv recovered from circular conv |
 
-## Core convention
+## convention
 
 Every sequence is a **(values, index) pair**, `[x, n]`, with contiguous ascending indices. Math is 0-based and MATLAB arrays are 1-based, so every array access gets `+1`.
 
@@ -104,6 +104,6 @@ Checks: both sums equal 30 = sum(x)·sum(h); the circular result is the linear r
 ## Next
 
 - DFT from the definition, then the DFT matrix (its link to the circulant matrix explains why the DFT turns circular convolution into multiplication)
-- Radix-2 FFT, Bluestein for arbitrary N, overlap-add convolution
+- Radix-2 FFT, overlap-add convolution
 - Windowed-sinc FIR design and DFT analysis of the ideal and truncated low-pass filters
 - Butterworth and Chebyshev design with a quantization study
