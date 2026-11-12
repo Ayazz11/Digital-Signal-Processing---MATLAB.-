@@ -2,12 +2,13 @@
 
 Design-level implementation of core DSP building blocks **without** calling `conv`, `cconv`, `fft` or `filter`. Built-in functions are used only as reference in the tests.
 
-**Status:** Module 1 (sequences, linear and circular convolution) is done. Module 2 (DFT/FFT, DTFT, windowed sinc and filter design) is next.
+Module 1 (sequences, linear and circular convolution) is done. 
+Module 2 (DFT/FFT, DTFT, windowed sinc and filter design) is done.
 
 ## Files
 
 | File | Purpose |
-|---|---|
+|Module 1|
 | `signal_generator.m` | Interactive driver: asks for signal type and parameters, plots in a 3×3 `stem` grid |
 | `gen_seq.m` | Sequence generator: returns values `x` and index vector `n` |
 | `linear_conv.m` | Linear convolution from the definition, with index tracking |
@@ -99,7 +100,6 @@ h = [2 2 1 1];    nh =  0:3;
 | Linear (8 points) | `2 6 5 5 6 3 2 1` | `-2 … 5` |
 | Circular, N = 5 | `5 8 6 5 6` | `-2 … 2` |
 
-Checks: both sums equal 30 = sum(x)·sum(h); the circular result is the linear result with its last three samples added onto the first three; `circular_convolution` on inputs zero-padded to length 8 equals `linear_conv`. Compare against `conv` and `cconv(x, h, 5)`.
 
 ## Next
 
