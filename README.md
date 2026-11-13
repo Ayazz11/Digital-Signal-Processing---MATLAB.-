@@ -4,12 +4,12 @@ Design-level implementations of core DSP building blocks, written from the mathe
 
 ## Status
 
-| Module | Topic |
+| Module | Topic | Status |
 |---|---|---|
-| 1 | Sequence generation, linear and circular convolution |
-| 2 | N-point DFT / IDFT, zero-padding, truncation vs folding, DFT–DTFT relationship |
-| 3 | Radix-2 FFT, fast convolution |
-| 4 | Windowed-sinc FIR design, Butterworth / Chebyshev design |
+| 1 | Sequence generation, linear and circular convolution | Done |
+| 2 | N-point DFT / IDFT, zero-padding, truncation vs folding, DFT–DTFT relationship | Done |
+| 3 | Radix-2 FFT, fast convolution | Planned |
+| 4 | Windowed-sinc FIR design, Butterworth / Chebyshev design | Planned |
 
 ## Conventions used everywhere
 
