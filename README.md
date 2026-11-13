@@ -6,10 +6,10 @@ Design-level implementations of core DSP building blocks, written from the mathe
 
 | Module | Topic |
 |---|---|---|
-| 1 | Sequence generation, linear and circular convolution 
-| 2 | N-point DFT / IDFT, zero-padding, truncation vs folding, DFT–DTFT relationship
-| 3 | Radix-2 FFT, fast convolution 
-| 4 | Windowed-sinc FIR design, Butterworth / Chebyshev design 
+| 1 | Sequence generation, linear and circular convolution |
+| 2 | N-point DFT / IDFT, zero-padding, truncation vs folding, DFT–DTFT relationship |
+| 3 | Radix-2 FFT, fast convolution |
+| 4 | Windowed-sinc FIR design, Butterworth / Chebyshev design |
 
 ## Conventions used everywhere
 
@@ -281,20 +281,12 @@ fprintf("max |truncated - DTFT| = %.2e\n", max(abs(Xt - Xd)));
 2. **M ≥ N loses nothing.** The IDFT returns x (plus zeros), and the extra bins from zero-padding only interpolate.
 3. **M < N always loses information.** The two ways of reducing the length mean different things:
    - *Truncation* keeps exact samples of the original signal but analyses a cropped signal.
-   - *Folding* keeps exact samples of the original signal's DTFT but mixes time regions.
+   - *Folding* keeps exact samples of the original signal's DTFT but mixes time regions hence ot invertible.
 4. **`fft(x, M)` truncates for M < N**, so compare folded results against the DTFT, not against `fft`.
 
-## Known limitations
+## limitations
 
 - The folding loop in `dft.m` adds each extra sample once, which is correct when `N ≤ 2M`. For `N > 2M` a sample wraps more than once, and the general form is `x(mod(i-1, M) + 1) = x(mod(i-1, M) + 1) + x(i)` for `i = M+1:N`.
 - Complexity is O(N²) complex multiplications, since the DFT is evaluated directly from the definition.
 - The IDFT output is complex with negligible imaginary parts (rounding level) for a real signal. The plots show its real part.
 
-
-## Roadmap
-
-- Add numeric assertions (maximum error against `fft`, and against the DTFT samples) to each experiment, in addition to the visual comparison
-- Radix-2 FFT, and a runtime-versus-N plot (O(N²) against O(N log N))
-- Fast convolution through the DFT, and the circular convolution theorem tested against Module 1
-- Windowed-sinc FIR design with DFT analysis of ideal and truncated low-pass filters
-- Butterworth and Chebyshev design with a quantization study
