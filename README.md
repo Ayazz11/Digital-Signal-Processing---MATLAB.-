@@ -107,7 +107,7 @@ end
 
 Both outputs are compared against `conv` and `cconv`. As a check, each sums to 30 = sum(x)·sum(h), and the circular result is the linear result with its last three samples added onto the first three.
 
-![Plot](Module1/Figure_1.png)
+![Plot](Module1/Figure_1_Convolution.png)
 
 ---
 
