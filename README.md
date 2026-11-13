@@ -130,7 +130,7 @@ end
 ```
 
 **IDFT**: `x(n) = (1/M) Σₖ X(k)·W^(−kn)`, the same loop with the conjugate twiddle and a final `1/M`.
-
+- The IDFT output is complex with negligible imaginary parts (rounding level) for a real signal. The plots show its real part.
 ```matlab
 % idft.m (core)
 W = exp(1j*2*pi/M);
@@ -287,8 +287,5 @@ fprintf("max |truncated - DTFT| = %.2e\n", max(abs(Xt - Xd)));
 4. **`fft(x, M)` truncates for M < N**, so compare folded results against the DTFT, not against `fft`.
 
 ## limitations
-
-- The folding loop in `dft.m` adds each extra sample once, which is correct when `N ≤ 2M`. For `N > 2M` a sample wraps more than once, and the general form is `x(mod(i-1, M) + 1) = x(mod(i-1, M) + 1) + x(i)` for `i = M+1:N`.
 - Complexity is O(N²) complex multiplications, since the DFT is evaluated directly from the definition.
-- The IDFT output is complex with negligible imaginary parts (rounding level) for a real signal. The plots show its real part.
 
