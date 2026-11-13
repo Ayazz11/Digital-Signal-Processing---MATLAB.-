@@ -107,6 +107,8 @@ end
 
 Both outputs are compared against `conv` and `cconv`. As a check, each sums to 30 = sum(x)·sum(h), and the circular result is the linear result with its last three samples added onto the first three.
 
+![Plot](Module1/Figure_1.png)
+
 ---
 
 # Module 2: The DFT 
@@ -190,7 +192,7 @@ X2       = fft(x, 12);
 [x_r, n] = idft(X);
 ```
 
-![Case 1: M = N](results/Figure_2_DFT1.png)
+![Case 1: M = N](Module2/Figure_2_DFT1.png)
 
 - The real and imaginary parts of `dft` and `fft` coincide bin by bin (bin 0 equals the sum of the samples, 60).
 - The IDFT returns all 12 samples and **recovers x(n) exactly**.
@@ -203,7 +205,7 @@ X2       = fft(x, 24);
 [x_r, n] = idft(X);
 ```
 
-![Case 2: M > N](results/Figure_2_DFT2.png)
+![Case 2: M > N](Module2/Figure_2_DFT2.png)
 
 - `dft` and `fft` coincide on all 24 bins.
 - The IDFT returns 24 samples: the original 12 followed by 12 zeros. It **recovers x(n)** plus the padding.
@@ -217,7 +219,7 @@ X2       = fft(x, 8);           % fft(x,8) truncates as well
 [x_r, n] = idft(X);
 ```
 
-![Case 3: M < N, truncation](results/Figure_2_DFT3.png)
+![Case 3: M < N, truncation](Module2/Figure_2_DFT3.png)
 
 - `dft` and `fft` coincide (bin 0 is 24, the sum of the first 8 samples, not 60).
 - The IDFT recovers `[1 2 0 1 5 6 1 8]`, which is **x(n) for n = 0 to 7 only**. Samples 8 to 11 are lost.
@@ -253,7 +255,7 @@ end
 
 The DTFT of the original sequence is also computed on a dense grid (1000 points over 0 to 2π) to draw the continuous curve.
 
-![Case 5: folded vs truncated vs DTFT](results/Figure_3_truncated_vs_Folded_comparision.png)
+![Case 5: folded vs truncated vs DTFT](Module2/Figure_3_truncated_vs_Folded_comparision.png)
 
 - **Folded DFT (green) coincides with the DTFT samples (black)** in both the real and imaginary parts, and its magnitude lands on the DTFT curve at every bin.
 - **Truncated DFT (red) does not.** It samples the DTFT of a different, cropped signal. At bin 0 the true value is 60, folding gives 60 and truncation gives 24. The missing 36 is exactly the sum of the discarded samples, 5+9+12+10.
