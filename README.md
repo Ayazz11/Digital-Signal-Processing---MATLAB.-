@@ -287,5 +287,5 @@ fprintf("max |truncated - DTFT| = %.2e\n", max(abs(Xt - Xd)));
 4. **`fft(x, M)` truncates for M < N**, so compare folded results against the DTFT, not against `fft`.
 
 ## limitations
-- Complexity is O(N²) complex multiplications, since the DFT is evaluated directly from the definition.
+- Computing the N-point DFT directly from its definition requires, for each of the N output bins, N complex multiplications and N−1 complex additions, giving N² complex multiplications and N(N−1) complex additions in total, that is O(N²) operations (about 8N² real operations). Doubling the transform length therefore quadruples the cost. An N-point radix-2 FFT needs only (N/2)·log₂N complex multiplications, which for N = 1024 is about 200 times fewer (Next).
 
