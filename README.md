@@ -289,3 +289,135 @@ fprintf("max |truncated - DTFT| = %.2e\n", max(abs(Xt - Xd)));
 ## limitations
 - Computing the N-point DFT directly from its definition requires, for each of the N output bins, N complex multiplications and N−1 complex additions, giving N² complex multiplications and N(N−1) complex additions in total, that is O(N²) operations (about 8N² real operations). Doubling the transform length therefore quadruples the cost. An N-point radix-2 FFT needs only (N/2)·log₂N complex multiplications, which for N = 1024 is about 200 times fewer (Next).
 
+# Module 3: DTFT and IDTFT
+
+The DFT of the previous module gives M samples of a spectrum. This module computes the spectrum itself, the **Discrete-Time Fourier Transform**, which is a continuous function of the digital frequency ω and repeats every 2π, together with its inverse.
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `dtft.m` | DTFT of a finite sequence on any frequency grid, using the true index vector |
+| `idtft.m` | Inverse DTFT by numerical integration over one period |
+| `test_dtft.m` | Four experiments (finite sequence, inverse, infinite-length sequence, ideal low-pass) and the figure below |
+
+## Implementation
+
+**DTFT:** `X(ω) = Σₙ x(n)·e^(−jωn)`, summed over the sequence's own indices `n`.
+
+```matlab
+% dtft.m
+function [X,w] = dtft(x,n,w)
+X = zeros(1, length(w));
+for i = 1:length(x)
+    X = X + x(i)*exp(-1j*w*n(i));      % contribution of sample n(i) at every frequency
+end
+end
+```
+
+- The sum uses the **true indices** `n`, so a sequence that starts at −2 (or anywhere) gets the correct phase. The magnitude does not depend on where the sequence starts.
+- ω is a grid in rad/sample that the caller supplies, for example `linspace(-2*pi, 2*pi, 2001)`. The DTFT is continuous, so a dense grid stands in for the continuous curve.
+
+**IDTFT:** `x(n) = (1/2π) ∫ X(e^{jω})·e^{jωn} dω`, over any one period of length 2π.
+
+```matlab
+% idtft.m
+function [x,n] = idtft(X,w,n)
+dw = w(2) - w(1);
+x = zeros(1, length(n));
+for i = 1:length(n)
+    f = X .* exp(1j*w*n(i));                                % integrand on the grid
+    x(i) = (sum(f) - 0.5*(f(1) + f(end))) * dw / (2*pi);    % trapezoidal rule
+end
+end
+```
+
+The code never evaluates a continuous integral. It samples the integrand on a uniform grid and applies the **trapezoidal rule**: `sum(f)` minus half of each endpoint gives the trapezoid weights, `dw` turns the sum into an area, and `1/(2π)` is the constant of the inverse transform.
+
+Why this is accurate: the integrand is periodic with period 2π, so its two end values are equal, and the trapezoidal rule over one full period reduces to an equally spaced sum. For a smooth periodic integrand this converges extremely fast. With M grid intervals the formula becomes the same sum as `idft.m`, so the IDFT is the trapezoidal rule applied to the inverse DTFT.
+
+Requirements for `idtft`:
+- The grid `w` must be **uniform and span exactly 2π** (for example −π to π, or 0 to 2π). The function does not check this, and a grid of any other length silently gives a wrong answer.
+- With `L` grid points, the result repeats in `n` with period `L−1` (time-domain aliasing). Keep the requested `n` range well inside that period.
+- The output is complex. For a real sequence the imaginary part is rounding error, so the plots show `real(x_r)`.
+
+**Choosing the output range `n`.** The IDTFT can be evaluated at every integer n, so the range is a choice. To find the support of an unknown sequence, evaluate over a wide window and take the first and last samples above a threshold (for example 1e-8). If the values at the edges of the window are still above the threshold, the sequence is longer or infinite, so widen the window.
+
+## Experiments and results
+
+![DTFT and IDTFT experiments](Module3/Figure_1.png)
+
+Panels are numbered row by row, from the top left.
+
+### Experiment 1: DTFT of a finite sequence (panels 1 to 3)
+
+```matlab
+nx = -2:2;   x = [1 2 0 1 1];
+w  = linspace(-2*pi, 2*pi, 2001);          % two full periods
+[X,w] = dtft(x,nx,w);
+```
+
+- **Continuous in ω.** The magnitude is a smooth curve, not a set of points.
+- **Periodic with period 2π.** The pattern from −2π to 0 repeats from 0 to 2π, and the phase repeats too.
+- **|X(0)| = 5**, the sum of the samples, since e^(−j0·n) = 1 for every n.
+- **Symmetry for a real sequence.** The magnitude is even in ω and the phase is odd.
+- The phase wraps at ±π, which is the display range of `angle`, and not a discontinuity in the transform.
+
+### Experiment 2: IDTFT from one period (panel 4)
+
+```matlab
+wp = linspace(-pi, pi, 2001);
+Xp = dtft(x,nx,wp);
+n_r = -4:4;
+[x_r,n_r] = idtft(Xp,wp,n_r);
+```
+
+- The IDTFT recovers `x(-2…2) = [1 2 0 1 1]` exactly as plotted, and gives **zero at n = ±3, ±4** outside the support.
+- Only **one period** of the spectrum is needed. The other periods carry no extra information, which is the periodicity result seen from the inverse side.
+- The range −4 … 4 was chosen to show the zeros on both sides.
+
+### Experiment 3: an infinite-length sequence (panel 5)
+
+```matlab
+alpha = 0.8;   n2 = 0:199;   x2 = alpha.^n2;
+X2 = dtft(x2,n2,w);
+```
+
+- x(n) = αⁿu(n) is infinitely long, so it is truncated at 200 samples. The omitted tail is about 0.8²⁰⁰ ≈ 4×10⁻²⁰, negligible.
+- The spectrum has a single peak at ω = 0 with height **1/(1−α) = 5**, equal to the sum of the samples. This matches the closed form `X(e^{jω}) = 1/(1 − α·e^{−jω})`.
+- The peak gets narrower as α approaches 1, since a longer sequence has a more concentrated spectrum.
+
+### Experiment 4: IDTFT of an ideal low-pass spectrum (panel 6)
+
+```matlab
+wc = pi/4;
+Xl = double(abs(wp) < wc);         % 1 for |w| < pi/4, 0 elsewhere
+nl = -20:20;
+[xl,nl] = idtft(Xl,wp,nl);
+```
+
+- The result is the **sinc sequence** `x(n) = sin(ωc·n)/(πn)`, with x(0) = ωc/π = 0.25.
+- It crosses zero at the multiples of π/ωc, that is n = ±4, ±8, …
+- The tails decay only like 1/n, so the sequence is non-zero for all n. Any window such as −20 … 20 is a **truncation**, which is the starting point for the windowed-sinc filter design later in the project.
+- Because the spectrum has a sharp edge, the trapezoidal rule converges more slowly here (error of order the grid spacing) than for the smooth spectra above.
+
+### Summary
+
+| Experiment | Input | What it shows |
+|---|---|---|
+| 1 | `[1 2 0 1 1]` on −2 … 2 | DTFT is continuous and 2π-periodic; \|X(0)\| = sum of samples |
+| 2 | one period of X(e^{jω}) | IDTFT recovers x(n), zero outside the support |
+| 3 | 0.8ⁿu(n), 200 samples | infinite-length sequence gives a peaked spectrum, 1/(1−α) at ω = 0 |
+| 4 | rectangular spectrum, ωc = π/4 | IDTFT is a sinc, so ideal filters are infinite and need truncating |
+
+## Key findings
+
+1. The DTFT is a **continuous, 2π-periodic** function of ω. A single period holds all the information.
+2. The M-point DFT from the previous module is the DTFT sampled at ω = 2πk/M, so the two modules describe the same spectrum at different resolutions.
+3. The IDTFT is an integral over **any** one period, and a trapezoidal sum on a dense grid evaluates the integeral.
+4. A finite sequence has a spectrum built from finitely many complex exponentials. An infinite sequence has a smoother, more concentrated spectrum. A rectangular spectrum corresponds to a sinc sequence.
+
+
+
+
+
