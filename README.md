@@ -347,8 +347,6 @@ Requirements for `idtft`:
 
 ![DTFT and IDTFT experiments](Module3/Figure_1.png)
 
-Panels are numbered row by row, from the top left.
-
 ### Experiment 1: DTFT of a finite sequence (panels 1 to 3)
 
 ```matlab
@@ -417,7 +415,253 @@ nl = -20:20;
 3. The IDTFT is an integral over **any** one period, and a trapezoidal sum on a dense grid evaluates the integeral.
 4. A finite sequence has a spectrum built from finitely many complex exponentials. An infinite sequence has a smoother, more concentrated spectrum. A rectangular spectrum corresponds to a sinc sequence.
 
+# Module 4: The FFT
+
+The DFT of Module 2 needs N² multiplications for N samples. The **Fast Fourier Transform (FFT)** computes exactly the same numbers with about (N/2)·log₂N multiplications. It is not a different transform. It is a smarter way to organise the same sum.
+
+This section explains where the algorithm comes from, walks through the code line by line, and describes how it was verified and how its cost was measured.
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `myfft.m` | Recursive radix-2 decimation-in-time FFT. Also returns the number of complex multiplications it used |
+| `myifft.m` | Inverse FFT, built from `myfft` |
+| `test_fft.m` | Verification against the direct DFT, the built-in `fft`, known transform pairs and the theoretical operation count |
+| `complexity_fft.m` | Complexity analysis: operation counts and measured runtime, direct DFT against FFT |
+
+The functions are called `myfft` and `myifft` so that they never shadow MATLAB's `fft` and `ifft`, which are used only as a reference.
+
+---
+
+## 1. Where the speed-up comes from
+
+Let `W = e^(−j2π/N)`. The DFT is
+
+```
+X(k) = Σₙ x(n)·W^(kn),    n = 0 … N−1,   k = 0 … N−1
+```
+
+### Step 1: split the sum into even and odd samples
+
+Write the even-indexed samples as n = 2m and the odd-indexed ones as n = 2m+1, with m = 0 … N/2−1:
+
+```
+X(k) = Σₘ x(2m)·W^(2mk)  +  Σₘ x(2m+1)·W^((2m+1)k)
+     = Σₘ x(2m)·(W²)^(mk)  +  W^k · Σₘ x(2m+1)·(W²)^(mk)
+```
+
+### Step 2: recognise two smaller DFTs
+
+The key fact is **W² = e^(−j2π/(N/2))**, which is the twiddle factor of an N/2-point DFT. So each sum above is an N/2-point DFT:
+
+- `E(k)` = N/2-point DFT of the even samples x(0), x(2), x(4), …
+- `O(k)` = N/2-point DFT of the odd samples x(1), x(3), x(5), …
+
+and therefore
+
+```
+X(k) = E(k) + W^k · O(k)
+```
+
+### Step 3: get the second half of the outputs for free
+
+This formula was written for k = 0 … N/2−1. For the remaining outputs, k + N/2, two things happen:
+
+- `E` and `O` are N/2-point DFTs, so they repeat with period N/2: E(k + N/2) = E(k) and O(k + N/2) = O(k).
+- The twiddle flips sign: W^(k+N/2) = W^k · W^(N/2) = W^k · (−1).
+
+so
+
+```
+X(k + N/2) = E(k) − W^k · O(k)
+```
+
+### The butterfly
+
+The two results use the same product `W^k·O(k)`. One multiplication gives both outputs:
+
+```
+E(k) ────────┬──── (+) ──── X(k)
+             │
+             │      ┌────── (−) ──── X(k + N/2)
+W^k · O(k) ──┴──────┘
+```
+
+For k = 0 … N/2−1 this takes N/2 complex multiplications, N/2 additions and N/2 subtractions, and produces all N outputs.
+
+### Step 4: repeat
+
+E and O are themselves DFTs of a power-of-2 length, so the same split applies to them, again and again, until the length is 1. The DFT of one sample is just that sample, which is where the recursion stops. A length-N input needs log₂N levels of splitting.
+
+---
+
+## 2. Worked example, N = 4
+
+x = `[1 2 3 4]`.
+
+**Split.** Even samples `[1 3]`, odd samples `[2 4]`.
+
+**Two-point DFTs.** For two samples `[a b]` the DFT is `[a+b, a−b]` (the twiddle is W₂⁰ = 1):
+
+- E = DFT of `[1 3]` = `[4, −2]`
+- O = DFT of `[2 4]` = `[6, −2]`
+
+**Twiddles for N = 4.** W₄⁰ = 1 and W₄¹ = e^(−jπ/2) = −j.
+
+**Multiply.** T = W·O = `[1·6, (−j)(−2)]` = `[6, 2j]`.
+
+**Butterflies.** X = `[E + T, E − T]`:
+
+| k | formula | value |
+|---|---|---|
+| 0 | E(0) + T(0) = 4 + 6 | 10 |
+| 1 | E(1) + T(1) = −2 + 2j | −2 + 2j |
+| 2 | E(0) − T(0) = 4 − 6 | −2 |
+| 3 | E(1) − T(1) = −2 − 2j | −2 − 2j |
+
+Result: `[10, −2+2j, −2, −2−2j]`, which is the direct DFT of the same input. This is also the first test in `test_fft.m`.
+
+## 3. Worked example, N = 8
+
+**The splitting tree** shows which original samples end up where:
+
+```
+[0 1 2 3 4 5 6 7]                      N = 8
+   ├─ even: [0 2 4 6]                  N = 4
+   │     ├─ even: [0 4]                N = 2
+   │     │     ├─ [0]                  N = 1  (base case)
+   │     │     └─ [4]
+   │     └─ odd:  [2 6]                N = 2
+   │           ├─ [2]
+   │           └─ [6]
+   └─ odd:  [1 3 5 7]                  N = 4
+         ├─ even: [1 5]                N = 2
+         │     ├─ [1]
+         │     └─ [5]
+         └─ odd:  [3 7]                N = 2
+               ├─ [3]
+               └─ [7]
+```
+
+The order of the leaves, `0 4 2 6 1 5 3 7`, is the bit-reversed order of 0 … 7. A recursive FFT produces it automatically. An iterative FFT would have to reorder the input explicitly.
+
+**The top-level combine** for x = `[1 2 3 4 5 6 7 8]`. The two 4-point DFTs are
+
+- E = DFT of `[1 3 5 7]` = `[16, −4+4j, −4, −4−4j]`
+- O = DFT of `[2 4 6 8]` = `[20, −4+4j, −4, −4−4j]`
+
+The twiddles are W₈ᵏ = `[1, 0.7071−0.7071j, −j, −0.7071−0.7071j]`, so
+
+T = W·O = `[20, 5.657j, 4j, 5.657j]`
+
+| k | X(k) = E(k) + T(k) | X(k+4) = E(k) − T(k) |
+|---|---|---|
+| 0 | 36 | −4 |
+| 1 | −4 + 9.657j | −4 − 1.657j |
+| 2 | −4 + 4j | −4 − 4j |
+| 3 | −4 + 1.657j | −4 − 9.657j |
+
+This agrees with the direct 8-point DFT of `1 … 8`.
+
+**Multiplications used:** 4 at the top level, 2 in each of the two 4-point combines (4 in total), and 1 in each of the four 2-point combines (4 in total), so 4 + 4 + 4 = 12 = (8/2)·log₂8.
+
+---
+
+## 4. Walking through the code
+
+```matlab
+function [X,nmul] = myfft(x)
+x = x(:).';
+N = length(x);
+if N == 1
+    X = x;
+    nmul = 0;
+    return
+end
+if mod(N,2) ~= 0
+    error('N must be a power of 2');
+end
+
+[E,nE] = myfft(x(1:2:end));              % x(0), x(2), x(4), ...
+[O,nO] = myfft(x(2:2:end));              % x(1), x(3), x(5), ...
+
+W = exp(-1j*2*pi*(0:N/2-1)/N);           % twiddle factors W^k
+T = W .* O;                              % N/2 complex multiplications
+X = [E + T, E - T];                      % butterflies
+nmul = nE + nO + N/2;
+end
+```
 
 
+### The call tree for N = 4
 
+```
+myfft([1 2 3 4])
+ ├─ myfft([1 3])
+ │   ├─ myfft(1)  → 1
+ │   ├─ myfft(3)  → 3
+ │   └─ W = [1];  T = [3];  X = [1+3, 1-3] = [4, -2]
+ ├─ myfft([2 4])
+ │   ├─ myfft(2)  → 2
+ │   ├─ myfft(4)  → 4
+ │   └─ T = [4];  X = [2+4, 2-4] = [6, -2]
+ └─ W = [1, -j];  T = [6, 2j]
+    X = [4+6, -2+2j, 4-6, -2-2j] = [10, -2+2j, -2, -2-2j]
+```
+
+## 5. The inverse FFT
+
+```matlab
+function x = myifft(X)
+N = length(X);
+x = conj(myfft(conj(X))) / N;
+end
+```
+
+The inverse DFT is `x(n) = (1/N) Σ X(k)·W^(−kn)`. Take the complex conjugate of both sides:
+
+```
+conj(x(n)) = (1/N) Σ conj(X(k))·W^(kn) = (1/N) · FFT{ conj(X) }(n)
+```
+
+so conjugating the result once more gives x. No second algorithm is needed: conjugate the input, run the forward FFT, conjugate the output, and divide by N.
+
+---
+
+## 6. Complexity analysis
+
+### Counting the operations
+
+Let M(N) be the number of complex multiplications. Each call does two half-size FFTs plus N/2 multiplications, and a single sample costs nothing:
+
+```
+M(N) = 2·M(N/2) + N/2,      M(1) = 0
+```
+
+Unrolling the recursion shows each of the log₂N levels contributes a total of N/2 multiplications, so
+
+```
+M(N) = (N/2)·log₂N
+```
+
+The additions behave the same way. Each combine does N additions or subtractions, so the total is N·log₂N. For comparison, the direct DFT does N² multiplications and N(N−1) additions.
+
+One complex multiplication is 4 real multiplications and 2 real additions.
+
+## 8. Key findings
+
+1. The FFT gives **identical results** to the direct DFT. It only changes how the same sum is evaluated.
+2. The saving comes from two facts about the twiddle factor: **W² is the twiddle of the half-size DFT**, and **W^(k+N/2) = −W^k**. Together they let one multiplication produce two outputs.
+3. The cost for Complex multiplications drops from O(N²) to **O(N log N)**. 
+4. The inverse FFT needs **no new algorithm**: conjugate, forward FFT, conjugate, divide by N.
+
+## 9. Limitations
+
+- **N must be a power of 2.** To handle other lengths, either zero-pad to the next power of 2, which samples the DTFT at 2πk/M′ and so is not the N-point DFT.
+- **The sequence is assumed to start at n = 0.** As with the Module 2 DFT, a sequence that starts at another index differs only by a linear phase factor.
+
+## 10. Experiments and results
+
+![FFT and IFFT experiment](Module4/Figure_1.png)
 
